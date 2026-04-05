@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CRduty — Class Task Dashboard</title>
+  <meta name="description" content="Real-time class task management for all 13 classes with division task boards, notices, and admin controls." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Supabase JS SDK via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase Config -->
+  <script src="supabase-config.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════ AUTH PAGE ══ -->
+<div id="page-auth" class="page active">
+  <div class="auth-bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="auth-card glass">
+    <div class="auth-brand">
+      <span class="brand-icon">✦</span>
+      <h1>CRduty</h1>
+      <p class="brand-tagline">School Task Management · All Classes</p>
+    </div>
+
+    <!-- Auth Tab Switcher -->
+    <div class="auth-tabs" role="tablist">
+      <button id="auth-tab-login"  class="auth-tab active" role="tab" aria-selected="true"  data-target="form-login">Sign In</button>
+      <button id="auth-tab-signup" class="auth-tab"        role="tab" aria-selected="false" data-target="form-signup">Create Account</button>
+      <div class="auth-tab-indicator" id="auth-tab-indicator"></div>
+    </div>
+
+    <!-- Login Form -->
+    <form id="form-login" class="auth-form" novalidate>
+      <div class="field-group">
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" placeholder="you@school.edu" autocomplete="email" required />
+      </div>
+      <div class="field-group">
+        <label for="login-password">Password</label>
+        <div class="input-wrapper">
+          <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" required />
+          <button type="button" class="eye-btn" data-target="login-password" aria-label="Toggle password">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <button type="button" id="forgot-password-link" class="forgot-pwd-btn">Forgot Password?</button>
+      </div>
+      <div id="login-error" class="error-msg" role="alert"></div>
+      <button type="submit" id="login-btn" class="btn-primary">
+        <span class="btn-text">Sign In</span>
+        <span class="btn-loader hidden">⟳</span>
+      </button>
+    </form>
+
+    <!-- Signup Form -->
+    <form id="form-signup" class="auth-form hidden" novalidate>
+      <div class="field-group">
+        <label for="signup-name">Full Name</label>
+        <input id="signup-name" type="text" placeholder="Your name" required />
+      </div>
+      <div class="field-group">
+        <label for="signup-email">Email</label>
+        <input id="signup-email" type="email" placeholder="you@school.edu" autocomplete="email" required />
+      </div>
+      <div class="field-group">
+        <label for="signup-password">Password</label>
+        <div class="input-wrapper">
+          <input id="signup-password" type="password" placeholder="Min 6 characters" required />
+          <button type="button" class="eye-btn" data-target="signup-password" aria-label="Toggle password">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group half">
+          <label for="signup-class">Class</label>
+          <select id="signup-class" required>
+            <option value="" disabled selected>Select</option>
+            <option value="Class1">Class 1</option>
+            <option value="Class2">Class 2</option>
+            <option value="Class3">Class 3</option>
+            <option value="Class4">Class 4</option>
+            <option value="Class5">Class 5</option>
+            <option value="Class6">Class 6</option>
+            <option value="Class7">Class 7</option>
+            <option value="Class8">Class 8</option>
+            <option value="Class9">Class 9</option>
+            <option value="Class10">Class 10</option>
+            <option value="Class11">Class 11</option>
+            <option value="Class12">Class 12</option>
+            <option value="Class13">Class 13</option>
+          </select>
+        </div>
+        <div class="field-group half">
+          <label for="signup-division">Division</label>
+          <select id="signup-division" required>
+            <option value="" disabled selected>Select</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+          </select>
+        </div>
+      </div>
+      <div id="signup-error" class="error-msg" role="alert"></div>
+      <button type="submit" id="signup-btn" class="btn-primary">
+        <span class="btn-text">Create Account</span>
+        <span class="btn-loader hidden">⟳</span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════════════════ DASHBOARD PAGE ══ -->
+<div id="page-dashboard" class="page">
+  <div class="dash-bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- Topbar -->
+  <header class="topbar glass">
+    <div class="topbar-left">
+      <span class="nav-brand">✦ CRduty</span>
+      <span class="nav-breadcrumb" id="nav-breadcrumb">Class —</span>
+    </div>
+    <div class="topbar-right">
+      <!-- Admin panel trigger (super admin only) -->
+      <button id="admin-panel-btn" class="btn-ghost topbar-icon hidden" title="Manage Users" aria-label="Open admin panel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </button>
+      <div class="user-chip glass" id="user-chip">
+        <span class="user-avatar" id="user-avatar">?</span>
+        <span class="user-info">
+          <span class="user-name" id="user-name-disp">Loading…</span>
+          <span class="user-role" id="user-role-disp">—</span>
+        </span>
+      </div>
+      <button id="logout-btn" class="btn-ghost topbar-icon" title="Logout" aria-label="Logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="dash-main">
+
+    <!-- Notice Board -->
+    <section class="notice-section">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">📢</span> Notice Board</h2>
+        <button id="add-notice-btn" class="btn-accent admin-only hidden">+ Notice</button>
+      </div>
+      <div id="notice-list" class="notice-list"></div>
+      <p id="no-notices" class="empty-state hidden">No notices posted yet.</p>
+    </section>
+
+    <!-- Task Board -->
+    <section class="task-section">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">📋</span> Division Task Board</h2>
+        <button id="add-task-btn" class="btn-accent admin-only hidden">+ Task</button>
+      </div>
+
+      <!-- Class Selector (13 pills) -->
+      <div class="class-scroll-row" id="class-scroll-row" role="group" aria-label="Class selector">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Division Tabs -->
+      <div class="tabs-container" role="tablist" aria-label="Division">
+        <button class="tab-btn active" data-div="A" role="tab" aria-selected="true"  id="tab-A">
+          <span class="tab-label">Division A</span>
+          <span class="tab-badge" id="badge-A">0</span>
+        </button>
+        <button class="tab-btn" data-div="B" role="tab" aria-selected="false" id="tab-B">
+          <span class="tab-label">Division B</span>
+          <span class="tab-badge" id="badge-B">0</span>
+        </button>
+        <button class="tab-btn" data-div="C" role="tab" aria-selected="false" id="tab-C">
+          <span class="tab-label">Division C</span>
+          <span class="tab-badge" id="badge-C">0</span>
+        </button>
+        <div class="tab-indicator" id="tab-indicator"></div>
+      </div>
+
+      <!-- Task Panels -->
+      <div id="task-panel-A" class="task-panel active" role="tabpanel" aria-labelledby="tab-A">
+        <div id="reminder-A" class="reminder-banner hidden" role="alert"></div>
+        <div class="progress-box" id="progress-A">
+          <div class="progress-label"><span id="progress-text-A">0 of 0 completed</span><span id="progress-pct-A">0%</span></div>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill-A" style="width:0%"></div></div>
+        </div>
+        <div class="task-list" id="task-list-A"></div>
+        <p class="empty-state hidden" id="empty-A">No tasks for Division A yet.</p>
+      </div>
+
+      <div id="task-panel-B" class="task-panel" role="tabpanel" aria-labelledby="tab-B">
+        <div id="reminder-B" class="reminder-banner hidden" role="alert"></div>
+        <div class="progress-box" id="progress-B">
+          <div class="progress-label"><span id="progress-text-B">0 of 0 completed</span><span id="progress-pct-B">0%</span></div>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill-B" style="width:0%"></div></div>
+        </div>
+        <div class="task-list" id="task-list-B"></div>
+        <p class="empty-state hidden" id="empty-B">No tasks for Division B yet.</p>
+      </div>
+
+      <div id="task-panel-C" class="task-panel" role="tabpanel" aria-labelledby="tab-C">
+        <div id="reminder-C" class="reminder-banner hidden" role="alert"></div>
+        <div class="progress-box" id="progress-C">
+          <div class="progress-label"><span id="progress-text-C">0 of 0 completed</span><span id="progress-pct-C">0%</span></div>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill-C" style="width:0%"></div></div>
+        </div>
+        <div class="task-list" id="task-list-C"></div>
+        <p class="empty-state hidden" id="empty-C">No tasks for Division C yet.</p>
+      </div>
+
+    </section>
+  </main>
+</div>
+
+<!-- ═════════════════════════ ADMIN DRAWER (super admin) ══ -->
+<div id="drawer-overlay" class="drawer-overlay"></div>
+<aside id="drawer-admin" class="drawer glass" aria-label="Admin panel" role="complementary">
+  <div class="drawer-header">
+    <h3>👥 Manage Users</h3>
+    <button id="drawer-close-btn" class="modal-close" aria-label="Close admin panel">✕</button>
+  </div>
+  <div class="drawer-search">
+    <input id="user-search" type="text" placeholder="Search by name or email…" />
+  </div>
+  <div id="user-list" class="user-list"></div>
+  <p id="no-users" class="empty-state hidden">No users registered yet.</p>
+</aside>
+
+<!-- ═══════════════════════════════════════ MODALS ══ -->
+
+<!-- Create Task Modal (admin only) -->
+<div id="modal-task-create" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="mtc-title">
+  <div class="modal-card glass">
+    <div class="modal-header">
+      <h3 id="mtc-title">Create Task</h3>
+      <button class="modal-close" data-modal="modal-task-create" aria-label="Close">✕</button>
+    </div>
+    <form id="form-task-create" novalidate>
+      <div class="field-group">
+        <label for="tc-title">Task Title</label>
+        <input id="tc-title" type="text" placeholder="e.g. Submit assignment by Friday" required />
+      </div>
+      <div class="field-group">
+        <label for="tc-desc">Description <span class="optional">(optional)</span></label>
+        <textarea id="tc-desc" rows="3" placeholder="Additional details…"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field-group half">
+          <label for="tc-class">Target Class</label>
+          <select id="tc-class" required>
+            <option value="Class1">Class 1</option><option value="Class2">Class 2</option>
+            <option value="Class3">Class 3</option><option value="Class4">Class 4</option>
+            <option value="Class5">Class 5</option><option value="Class6">Class 6</option>
+            <option value="Class7">Class 7</option><option value="Class8">Class 8</option>
+            <option value="Class9">Class 9</option><option value="Class10">Class 10</option>
+            <option value="Class11">Class 11</option><option value="Class12">Class 12</option>
+            <option value="Class13">Class 13</option>
+          </select>
+        </div>
+        <div class="field-group half">
+          <label for="tc-div">Target Division</label>
+          <select id="tc-div" required>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="All">All Divisions</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group half">
+          <label for="tc-due">Due Date <span class="optional">(optional)</span></label>
+          <input id="tc-due" type="date" />
+        </div>
+        <div class="field-group half">
+          <label>Priority</label>
+          <div class="priority-pills" id="tc-priority">
+            <button type="button" class="pill" data-val="low">Low</button>
+            <button type="button" class="pill active" data-val="medium">Medium</button>
+            <button type="button" class="pill" data-val="high">High</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" data-modal="modal-task-create">Cancel</button>
+        <button type="submit" class="btn-primary">Create Task</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Task Modal — Canonical (creator / super admin) -->
+<div id="modal-task-edit-canonical" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="mtec-title">
+  <div class="modal-card glass">
+    <div class="modal-header">
+      <h3 id="mtec-title">Edit Task <span class="badge-canonical">Original</span></h3>
+      <button class="modal-close" data-modal="modal-task-edit-canonical" aria-label="Close">✕</button>
+    </div>
+    <form id="form-task-edit-canonical" novalidate>
+      <input type="hidden" id="tec-id" />
+      <div class="field-group">
+        <label for="tec-title">Task Title</label>
+        <input id="tec-title" type="text" required />
+      </div>
+      <div class="field-group">
+        <label for="tec-desc">Description <span class="optional">(optional)</span></label>
+        <textarea id="tec-desc" rows="3"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field-group half">
+          <label for="tec-due">Due Date <span class="optional">(optional)</span></label>
+          <input id="tec-due" type="date" />
+        </div>
+        <div class="field-group half">
+          <label>Priority</label>
+          <div class="priority-pills" id="tec-priority">
+            <button type="button" class="pill" data-val="low">Low</button>
+            <button type="button" class="pill" data-val="medium">Medium</button>
+            <button type="button" class="pill" data-val="high">High</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" data-modal="modal-task-edit-canonical">Cancel</button>
+        <button type="submit" class="btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Task Modal — Personal (any user) -->
+<div id="modal-task-edit-personal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="mtep-title">
+  <div class="modal-card glass">
+    <div class="modal-header">
+      <h3 id="mtep-title">My Version <span class="badge-personal">Personal</span></h3>
+      <button class="modal-close" data-modal="modal-task-edit-personal" aria-label="Close">✕</button>
+    </div>
+    <p class="modal-desc">Your edits are only visible to you. The original task is not affected.</p>
+    <form id="form-task-edit-personal" novalidate>
+      <input type="hidden" id="tep-id" />
+      <div class="field-group">
+        <label for="tep-title">Task Title</label>
+        <input id="tep-title" type="text" placeholder="Your custom title…" />
+      </div>
+      <div class="field-group">
+        <label for="tep-desc">Notes / Description</label>
+        <textarea id="tep-desc" rows="4" placeholder="Add your personal notes here…"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" data-modal="modal-task-edit-personal">Cancel</button>
+        <button type="button" id="tep-reset-btn" class="btn-ghost">Reset to Original</button>
+        <button type="submit" class="btn-primary">Save My Version</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Notice Modal (admin only) -->
+<div id="modal-notice" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="mn-title">
+  <div class="modal-card glass">
+    <div class="modal-header">
+      <h3 id="mn-title">Post Notice</h3>
+      <button class="modal-close" data-modal="modal-notice" aria-label="Close">✕</button>
+    </div>
+    <form id="form-notice" novalidate>
+      <div class="field-group">
+        <label for="n-title">Notice Title</label>
+        <input id="n-title" type="text" placeholder="e.g. Exam timetable released" required />
+      </div>
+      <div class="field-group">
+        <label for="n-body">Content</label>
+        <textarea id="n-body" rows="4" placeholder="Write the notice details here…" required></textarea>
+      </div>
+      <div class="field-group">
+        <label>Type</label>
+        <div class="priority-pills" id="n-type">
+          <button type="button" class="pill active" data-val="info">ℹ️ Info</button>
+          <button type="button" class="pill" data-val="warning">⚠️ Warning</button>
+          <button type="button" class="pill" data-val="urgent">🚨 Urgent</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" data-modal="modal-notice">Cancel</button>
+        <button type="submit" class="btn-primary">Post Notice</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div id="modal-confirm" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="mc-title">
+  <div class="modal-card glass modal-sm">
+    <div class="modal-header">
+      <h3 id="mc-title">Confirm Delete</h3>
+      <button class="modal-close" data-modal="modal-confirm" aria-label="Close">✕</button>
+    </div>
+    <p id="confirm-msg" class="confirm-message">Are you sure? This cannot be undone.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" data-modal="modal-confirm">Cancel</button>
+      <button type="button" id="confirm-ok-btn" class="btn-danger">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div id="modal-forgot-password" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="mfp-title">
+  <div class="modal-card glass modal-sm">
+    <div class="modal-header">
+      <h3 id="mfp-title">Reset Password</h3>
+      <button class="modal-close" data-modal="modal-forgot-password" aria-label="Close">✕</button>
+    </div>
+    <p class="modal-desc">Enter your email and we'll send you a password reset link.</p>
+    <form id="form-forgot-password" novalidate>
+      <div class="field-group">
+        <label for="forgot-email">Email Address</label>
+        <input id="forgot-email" type="email" placeholder="you@school.edu" required />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" data-modal="modal-forgot-password">Cancel</button>
+        <button type="submit" id="forgot-btn" class="btn-primary">Send Reset Link</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Update Password Modal -->
+<div id="modal-update-password" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="mup-title">
+  <div class="modal-card glass modal-sm">
+    <div class="modal-header">
+      <h3 id="mup-title">Set New Password</h3>
+      <button class="modal-close" data-modal="modal-update-password" aria-label="Close">✕</button>
+    </div>
+    <p class="modal-desc">Enter your new secure password.</p>
+    <form id="form-update-password" novalidate>
+      <div class="field-group">
+        <label for="update-password">New Password</label>
+        <div class="input-wrapper">
+          <input id="update-password" type="password" placeholder="Min 6 characters" required />
+          <button type="button" class="eye-btn" data-target="update-password">👁</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" id="update-pwd-btn" class="btn-primary">Update Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
