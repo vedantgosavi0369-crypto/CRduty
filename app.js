@@ -279,21 +279,37 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
     
     showGlobalLoader('Loading dashboard…');
     
-    // Poll for user profile to avoid race condition where table row isn't created yet during signup
-    let userDoc = null;
-    for(let i=0; i<6; i++) {
-        const { data } = await supabaseClient.from('users').select('*').eq('id', currentUser.id).single();
-        if (data) { userDoc = data; break; }
-        await new Promise(r => setTimeout(r, 500));
-    }
+    // Optimize speed: Perform the user profile check AND all table data fetches concurrently!
+    const [userDoc, resTasks, resNotices, resOverrides] = await Promise.all([
+      (async () => {
+        for(let i=0; i<6; i++) {
+            const { data } = await supabaseClient.from('users').select('*').eq('id', currentUser.id).single();
+            if (data) return data;
+            await new Promise(r => setTimeout(r, 500));
+        }
+        return null;
+      })(),
+      supabaseClient.from('tasks').select('*').order('created_at', { ascending: false }),
+      supabaseClient.from('notices').select('*').order('created_at', { ascending: false }),
+      supabaseClient.from('user_task_data').select('*').eq('user_id', currentUser.id)
+    ]);
     
     if (userDoc) {
       userDocData = userDoc;
       activeClass = userDocData.class_id || 'Class1';
       activeDiv   = userDocData.division_id || 'A';
       
+      // Inject global data
+      if (!resTasks.error) tasksData = resTasks.data;
+      if (!resNotices.error) noticesData = resNotices.data;
+      if (!resOverrides.error) {
+        userOverrides = {};
+        resOverrides.data.forEach(d => { userOverrides[d.task_id] = d; });
+      }
+
       setupDashboardUI();
-      await fetchInitialData();
+      renderAllTasks();
+      renderNotices();
       startRealtimeListeners();
       showPage('dashboard');
     } else {
@@ -404,21 +420,8 @@ function switchTab(div, doRender = true) {
    SUPABASE DATA FETCHING & REALTIME LISTENERS
 ══════════════════════════════════════════════════════════════ */
 async function fetchInitialData() {
-  const [resTasks, resNotices, resOverrides] = await Promise.all([
-    supabaseClient.from('tasks').select('*').order('created_at', { ascending: false }),
-    supabaseClient.from('notices').select('*').order('created_at', { ascending: false }),
-    supabaseClient.from('user_task_data').select('*').eq('user_id', currentUser.id)
-  ]);
-
-  if (!resTasks.error) tasksData = resTasks.data;
-  if (!resNotices.error) noticesData = resNotices.data;
-  if (!resOverrides.error) {
-    userOverrides = {};
-    resOverrides.data.forEach(d => { userOverrides[d.task_id] = d; });
-  }
-
-  renderAllTasks();
-  renderNotices();
+  // Now handled concurrently inside the onAuthStateChange initialization block!
+  // This wrapper is kept if manual re-fetches are ever needed.
 }
 
 function startRealtimeListeners() {
