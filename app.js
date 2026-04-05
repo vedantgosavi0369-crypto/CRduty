@@ -277,10 +277,36 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (!session) return;
     currentUser = session.user;
     
-    showGlobalLoader('Loading dashboard…');
+    // --- STALE-WHILE-REVALIDATE CACHING ---
+    // If we have cached data, render it instantly without a loading screen!
+    const cacheKey = 'crduty_data_' + currentUser.id;
+    const cachedData = localStorage.getItem(cacheKey);
+    let usedCache = false;
     
-    // Optimize speed: Perform the user profile check AND all table data fetches concurrently!
-    const [userDoc, resTasks, resNotices, resOverrides] = await Promise.all([
+    if (cachedData) {
+      try {
+        const c = JSON.parse(cachedData);
+        userDocData   = c.userDoc;
+        tasksData     = c.tasks || [];
+        noticesData   = c.notices || [];
+        userOverrides = c.overrides || {};
+        activeClass   = userDocData?.class_id || 'Class1';
+        activeDiv     = userDocData?.division_id || 'A';
+        
+        setupDashboardUI();
+        renderAllTasks();
+        renderNotices();
+        showPage('dashboard');
+        usedCache = true;
+      } catch (e) {
+        console.warn('Cache error:', e);
+      }
+    }
+    
+    if (!usedCache) showGlobalLoader('Loading dashboard…');
+    
+    // Optimize speed: Perform the user profile check AND all table data fetches concurrently (in background if cached)
+    const [userDocRes, resTasks, resNotices, resOverrides] = await Promise.all([
       (async () => {
         for(let i=0; i<6; i++) {
             const { data } = await supabaseClient.from('users').select('*').eq('id', currentUser.id).single();
@@ -294,8 +320,8 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
       supabaseClient.from('user_task_data').select('*').eq('user_id', currentUser.id)
     ]);
     
-    if (userDoc) {
-      userDocData = userDoc;
+    if (userDocRes) {
+      userDocData = userDocRes;
       activeClass = userDocData.class_id || 'Class1';
       activeDiv   = userDocData.division_id || 'A';
       
@@ -307,14 +333,21 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
         resOverrides.data.forEach(d => { userOverrides[d.task_id] = d; });
       }
 
+      // Save to cache for the next time they open the site
+      localStorage.setItem(cacheKey, JSON.stringify({
+        userDoc: userDocData,
+        tasks: tasksData,
+        notices: noticesData,
+        overrides: userOverrides
+      }));
+
       setupDashboardUI();
       renderAllTasks();
       renderNotices();
       startRealtimeListeners();
-      showPage('dashboard');
+      if (!usedCache) showPage('dashboard');
     } else {
-      showToast('Error setting up user context. Try refreshing.', 'error');
-      supabaseClient.auth.signOut();
+      showToast('Error setting up user profile. Try logging out.', 'error');
     }
     hideGlobalLoader();
   } else if (event === 'SIGNED_OUT') {
